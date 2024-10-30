@@ -1,0 +1,15 @@
+[package]
+authors = ["Wonderland"]
+name = "medusa-gen-rs"
+description = "Generate a set of contracts for Medusa tests"
+version = "0.1.0"
+edition = "2021"
+repository = "https://github.com/defi-wonderland/medusa-gen-rs"
+
+[[bin]]
+name = "medusa-gen"
+path = "src/main.rs"
+
+[dependencies]
+askama = "0.12.1"
+clap = { version = "4.5.20", features = ["derive"] }
