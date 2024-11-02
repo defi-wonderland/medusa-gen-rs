@@ -1,8 +1,10 @@
 use anyhow::{Context, Result};
 use askama::Template;
+use mockall::*;
 use std::fmt::Write;
 use std::fs::{DirBuilder, File};
 use std::io::Write as WriteIO;
+use std::path::Path;
 
 use crate::types::Contract;
 use crate::{Args, ContractType};
@@ -148,6 +150,8 @@ pub fn generate_contract(args: &Args, contract_type: ContractType) -> Result<Con
     Ok(contract)
 }
 
+// TESTS //
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -238,5 +242,89 @@ mod tests {
     fn test_parse_parents_empty() {
         let parents = vec![];
         assert_eq!(parse_parents(parents.as_ref()), "");
+    }
+
+    #[test]
+    fn test_generate_family_with_handler() {
+        let args = Args {
+            overwrite: true,
+            solc: "0.8.23".to_string(),
+            nb_handlers: 2,
+            nb_properties: 2,
+        };
+
+        let result = generate_family(&args, ContractType::Handler);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_generate_family_with_property() {
+        let args = Args {
+            overwrite: true,
+            solc: "0.8.23".to_string(),
+            nb_handlers: 2,
+            nb_properties: 2,
+        };
+
+        let result = generate_family(&args, ContractType::Property);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_generate_family_with_setup_fail() {
+        let args = Args {
+            overwrite: true,
+            solc: "0.8.23".to_string(),
+            nb_handlers: 2,
+            nb_properties: 2,
+        };
+
+        let result = generate_contract(&args, ContractType::Setup);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_generate_family_with_entry_point_fail() {
+        let args = Args {
+            overwrite: true,
+            solc: "0.8.23".to_string(),
+            nb_handlers: 2,
+            nb_properties: 2,
+        };
+
+        let result = generate_contract(&args, ContractType::EntryPoint);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_generate_contract_with_setup() {
+        let args = Args {
+            overwrite: true,
+            solc: "0.8.23".to_string(),
+            nb_handlers: 2,
+            nb_properties: 2,
+        };
+
+        let result = generate_contract(&args, ContractType::Setup);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_generate_contract_with_entry_poing() {
+        let args = Args {
+            overwrite: true,
+            solc: "0.8.23".to_string(),
+            nb_handlers: 2,
+            nb_properties: 2,
+        };
+
+        let result = generate_contract(&args, ContractType::EntryPoint);
+
+        assert!(result.is_ok());
     }
 }
