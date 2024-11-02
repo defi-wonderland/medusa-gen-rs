@@ -19,6 +19,10 @@ struct Args {
     /// Number of properties contract to generate
     #[arg(short = 'p', long, default_value_t = 2)]
     nb_properties: u8,
+
+    /// Overwrite existing files
+    #[arg(short, long, default_value = "false")]
+    overwrite: bool,
 }
 
 /// The contract template,
@@ -133,11 +137,19 @@ fn generate_family(args: &Args, contract_type: ContractType) -> Result<()> {
 
     // create_new prevents overwriting existing files - todo: add a flag to force overwrite
     parents.iter().try_for_each(|p| -> Result<()> {
-        let mut f = File::create_new(format!(
-            "{}/{}.t.sol",
-            contract_type.directory_name(),
-            p.name
-        ))
+        let mut f = if args.overwrite {
+            File::create(format!(
+                "{}/{}.t.sol",
+                contract_type.directory_name(),
+                p.name
+            ))
+        } else {
+            File::create_new(format!(
+                "{}/{}.t.sol",
+                contract_type.directory_name(),
+                p.name
+            ))
+        }
         .context(format!(
             "fail to create contract {}",
             contract_type.directory_name()
@@ -156,16 +168,33 @@ fn generate_family(args: &Args, contract_type: ContractType) -> Result<()> {
         Ok(())
     })?;
 
-    let mut f = File::create_new(format!(
-        "{}/{}.t.sol",
-        contract_type.directory_name(),
-        child.name
+    let mut f = if args.overwrite {
+        File::create(format!(
+            "{}/{}.t.sol",
+            contract_type.directory_name(),
+            child.name
+        ))
+    } else {
+        File::create_new(format!(
+            "{}/{}.t.sol",
+            contract_type.directory_name(),
+            child.name
+        ))
+    }
+    .context(format!(
+        "Failed to create {} ",
+        contract_type.directory_name()
     ))?;
 
-    let child_rendered = child.render().context("Fail to render child")?;
+    let child_rendered = child.render().context(format!(
+        "Fail to render child {}",
+        contract_type.directory_name()
+    ))?;
 
-    f.write_all(child_rendered.as_bytes())
-        .context("Fail to write child")?;
+    f.write_all(child_rendered.as_bytes()).context(format!(
+        "Fail to write child {}",
+        contract_type.directory_name()
+    ))?;
 
     Ok(())
 }
@@ -188,8 +217,13 @@ fn main() -> Result<()> {
         parents: "PropertiesParent".to_string(),
     };
 
-    let mut f = File::create_new(format!("{}{}", fuzz_entry_point.name, ".t.sol"))
-        .context("Failed to create entry point contract")?;
+    let mut f = if args.overwrite {
+        File::create(format!("{}{}", fuzz_entry_point.name, ".t.sol"))
+    } else {
+        File::create_new(format!("{}{}", fuzz_entry_point.name, ".t.sol"))
+    }
+    .context("Failed to create entry point contract")?;
+
     f.write_all(
         fuzz_entry_point
             .render()
@@ -206,8 +240,12 @@ fn main() -> Result<()> {
         parents: "".to_string(),
     };
 
-    let mut f = File::create_new(format!("{}{}", setup_contract.name, ".t.sol"))
-        .context("Fail to create setup contract")?;
+    let mut f = if args.overwrite {
+        File::create(format!("{}{}", setup_contract.name, ".t.sol"))
+    } else {
+        File::create_new(format!("{}{}", setup_contract.name, ".t.sol"))
+    }
+    .context("Fail to create setup contract")?;
     f.write_all(
         setup_contract
             .render()
