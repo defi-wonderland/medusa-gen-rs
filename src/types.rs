@@ -29,7 +29,7 @@ impl ContractType {
         }
     }
 
-    pub fn parents_name(&self) -> String {
+    pub fn name(&self) -> String {
         match self {
             ContractType::Handler => "Handler".to_string(),
             ContractType::Property => "Property".to_string(),

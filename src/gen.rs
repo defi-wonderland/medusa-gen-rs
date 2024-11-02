@@ -63,7 +63,7 @@ pub fn generate_family(args: &Args, contract_type: ContractType) -> Result<()> {
                 contract_type.import_name()
             )
             .to_string(),
-            name: format!("{}{}", contract_type.parents_name(), (b'A' + i) as char),
+            name: format!("{}{}", contract_type.name(), (b'A' + i) as char),
             parents: contract_type.import_name(),
         })
         .collect();
@@ -73,7 +73,7 @@ pub fn generate_family(args: &Args, contract_type: ContractType) -> Result<()> {
         licence: "MIT".to_string(),
         solc: args.solc.clone(),
         imports: parse_child_imports(parents.as_ref()),
-        name: format!("{}Parent", contract_type.parents_name()),
+        name: format!("{}Parent", contract_type.name()),
         parents: parse_parents(parents.as_ref()),
     };
 
@@ -129,7 +129,7 @@ pub fn generate_contract(args: &Args, contract_type: ContractType) -> Result<()>
         licence: "MIT".to_string(),
         solc: args.solc.clone(),
         imports: contract_type.import_path(),
-        name: contract_type.parents_name(),
+        name: contract_type.name(),
         parents: contract_type.import_name(),
     };
 
@@ -139,17 +139,16 @@ pub fn generate_contract(args: &Args, contract_type: ContractType) -> Result<()>
     )
     .context(format!(
         "Failed to create {} entry point contract",
-        contract_type.parents_name()
+        contract_type.name()
     ))?;
 
     write_file(
         &mut f,
-        &fuzz_entry_point.render().context(format!(
-            "Fail to render {} contract",
-            contract_type.parents_name()
-        ))?,
+        &fuzz_entry_point
+            .render()
+            .context(format!("Fail to render {} contract", contract_type.name()))?,
     )
-    .context(format!("Failed to write {}", contract_type.parents_name()))?;
+    .context(format!("Failed to write {}", contract_type.name()))?;
 
     Ok(())
 }
