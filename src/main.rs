@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use askama::Template;
 use clap::Parser;
 use std::fmt::Write;
@@ -90,7 +91,7 @@ fn parse_parents(parents: &[Contract]) -> String {
 }
 
 /// Create either handler or property contracts (parents+child)
-fn generate_family(args: &Args, contract_type: ContractType) -> Result<(), std::io::Error> {
+fn generate_family(args: &Args, contract_type: ContractType) -> Result<()> {
     let nb_parents = match contract_type {
         ContractType::Handler => args.nb_handlers,
         ContractType::Property => args.nb_properties,
@@ -124,22 +125,33 @@ fn generate_family(args: &Args, contract_type: ContractType) -> Result<(), std::
 
     DirBuilder::new()
         .recursive(true)
-        .create(contract_type.directory_name())?;
+        .create(contract_type.directory_name())
+        .context(format!(
+            "Fail to create folder for {}",
+            contract_type.directory_name()
+        ))?;
 
     // create_new prevents overwriting existing files - todo: add a flag to force overwrite
-    parents.iter().try_for_each(|p| -> std::io::Result<()> {
+    parents.iter().try_for_each(|p| -> Result<()> {
         let mut f = File::create_new(format!(
             "{}/{}.t.sol",
             contract_type.directory_name(),
             p.name
+        ))
+        .context(format!(
+            "fail to create contract {}",
+            contract_type.directory_name()
         ))?;
 
-        // Don't judge me, you know you would have done the same
         f.write_all(
             p.render()
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?
+                .context(format!("Fail to render {}", contract_type.directory_name()))?
                 .as_bytes(),
-        )?;
+        )
+        .context(format!(
+            "fail to write contract {}",
+            contract_type.directory_name()
+        ))?;
 
         Ok(())
     })?;
@@ -150,21 +162,22 @@ fn generate_family(args: &Args, contract_type: ContractType) -> Result<(), std::
         child.name
     ))?;
 
-    let child_rendered = child
-        .render()
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    let child_rendered = child.render().context("Fail to render child")?;
 
-    f.write_all(child_rendered.as_bytes())?;
+    f.write_all(child_rendered.as_bytes())
+        .context("Fail to write child")?;
 
     Ok(())
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<()> {
     let args = Args::parse();
 
-    generate_family(&args, ContractType::Handler)?;
+    generate_family(&args, ContractType::Handler)
+        .context("Failed to generate handlers contracts")?;
 
-    generate_family(&args, ContractType::Property)?;
+    generate_family(&args, ContractType::Property)
+        .context("Failed to generated properties contracts")?;
 
     let fuzz_entry_point = Contract {
         licence: "MIT".to_string(),
@@ -175,8 +188,15 @@ fn main() -> std::io::Result<()> {
         parents: "PropertiesParent".to_string(),
     };
 
-    let mut f = File::create_new(format!("{}{}", fuzz_entry_point.name, ".t.sol"))?;
-    f.write_all(fuzz_entry_point.render().unwrap().as_bytes())?;
+    let mut f = File::create_new(format!("{}{}", fuzz_entry_point.name, ".t.sol"))
+        .context("Failed to create entry point contract")?;
+    f.write_all(
+        fuzz_entry_point
+            .render()
+            .context("Fail to render")?
+            .as_bytes(),
+    )
+    .context("Failed to write entry point")?;
 
     let setup_contract = Contract {
         licence: "MIT".to_string(),
@@ -186,8 +206,15 @@ fn main() -> std::io::Result<()> {
         parents: "".to_string(),
     };
 
-    let mut f = File::create_new(format!("{}{}", setup_contract.name, ".t.sol"))?;
-    f.write_all(setup_contract.render().unwrap().as_bytes())?;
+    let mut f = File::create_new(format!("{}{}", setup_contract.name, ".t.sol"))
+        .context("Fail to create setup contract")?;
+    f.write_all(
+        setup_contract
+            .render()
+            .context("Fail to redner setup contract")?
+            .as_bytes(),
+    )
+    .context("Fail to write setup contract")?;
 
     Ok(())
 }

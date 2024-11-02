@@ -11,5 +11,6 @@ name = "medusa-gen"
 path = "src/main.rs"
 
 [dependencies]
+anyhow = "1.0.92"
 askama = "0.12.1"
 clap = { version = "4.5.20", features = ["derive"] }
