@@ -86,26 +86,26 @@ pub fn generate_family(args: &Args, contract_type: ContractType) -> Result<()> {
     };
 
     // write all parents
-    // parents.iter().try_for_each(|p| -> Result<()> {
-    //     let mut f = create_file(
-    //         &format!("{}/{}.t.sol", contract_type.directory_name(), p.name),
-    //         args.overwrite,
-    //     )
-    //     .context(format!("Failed to create {}", p.name))?;
+    parents.iter().try_for_each(|p| -> Result<()> {
+        let mut f = create_file(
+            &format!("{}/{}.t.sol", contract_type.directory_name(), p.name),
+            args.overwrite,
+        )
+        .context(format!("Failed to create {}", p.name))?;
 
-    //     write_file(
-    //         &mut f,
-    //         &p.render()
-    //             .context(format!("Fail to render {}", contract_type.directory_name()))?,
-    //     )
-    //     .context(format!(
-    //         "fail to write contract {}",
-    //         contract_type.directory_name()
-    //     ))
-    //     .context(format!("Failed to write {}", p.name))?;
+        write_file(
+            &mut f,
+            &p.render()
+                .context(format!("Fail to render {}", contract_type.directory_name()))?,
+        )
+        .context(format!(
+            "fail to write contract {}",
+            contract_type.directory_name()
+        ))
+        .context(format!("Failed to write {}", p.name))?;
 
-    //     Ok(())
-    // })?;
+        Ok(())
+    })?;
 
     // write child
     let mut f = create_file(
