@@ -1,7 +1,8 @@
 use askama::Template;
 use clap::Parser;
+use std::fmt::Write;
 use std::fs::{DirBuilder, File};
-use std::io::Write;
+use std::io::Write as WriteIO;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -68,20 +69,22 @@ impl ContractType {
 }
 
 /// Create the "import { HandlerA, HandlerB } from './handlers/HandlersParent.t.sol';" from a vec of parent contracts
-fn parse_child_imports(parents: &Vec<Contract>) -> String {
-    parents
-        .iter()
-        .map(|p| format!("import {{ {} }} from './{}.t.sol';\n", p.name, p.name))
-        .collect()
+fn parse_child_imports(parents: &[Contract]) -> String {
+    parents.iter().fold(String::new(), |mut output, b| {
+        let _ = writeln!(output, "import {{ {} }} from './{}.t.sol';", b.name, b.name);
+        output
+    })
 }
 
 /// Create the "HandlerA, HandlerB" in "contract HandlersParent is HandlerA, HandlerB"
 /// the "is" statement is conditionnaly added in the template
-fn parse_parents(parents: &Vec<Contract>) -> String {
+fn parse_parents(parents: &[Contract]) -> String {
     parents
         .iter()
-        .map(|p| format!("{}, ", p.name))
-        .collect::<String>()
+        .fold(String::new(), |mut output, b| {
+            let _ = write!(output, "{}, ", b.name);
+            output
+        })
         .trim_end_matches(", ")
         .to_string()
 }
