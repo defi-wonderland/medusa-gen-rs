@@ -33,6 +33,8 @@ impl ContractType {
         match self {
             ContractType::Handler => "Handler".to_string(),
             ContractType::Property => "Property".to_string(),
+            ContractType::EntryPoint => "FuzzTest".to_string(),
+            ContractType::Setup => "Setup".to_string(),
         }
     }
 
@@ -40,6 +42,8 @@ impl ContractType {
         match self {
             ContractType::Handler => "Setup".to_string(),
             ContractType::Property => "HandlersParent".to_string(),
+            ContractType::EntryPoint => "PropertiesParent".to_string(),
+            ContractType::Setup => "".to_string(),
         }
     }
 
@@ -47,6 +51,10 @@ impl ContractType {
         match self {
             ContractType::Handler => "./".to_string(),
             ContractType::Property => "../".to_string(),
+            ContractType::EntryPoint => {
+                "import {PropertiesParent} from './properties/PropertiesParent.t.sol';".to_string()
+            }
+            ContractType::Setup => "".to_string(),
         }
     }
 }

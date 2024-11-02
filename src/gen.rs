@@ -28,6 +28,21 @@ fn parse_parents(parents: &[Contract]) -> String {
         .to_string()
 }
 
+fn create_file(path: &str, should_overwrite: bool) -> Result<File> {
+    let f = if should_overwrite {
+        File::create(path)
+    } else {
+        File::create_new(path)
+    }?;
+
+    Ok(f)
+}
+
+fn write_file(f: &mut File, child_rendered: &str) -> Result<()> {
+    f.write_all(child_rendered.as_bytes())?;
+    Ok(())
+}
+
 /// Create and write either handler or property contracts (parents+child)
 pub fn generate_family(args: &Args, contract_type: ContractType) -> Result<()> {
     let nb_parents = match contract_type {
@@ -70,66 +85,40 @@ pub fn generate_family(args: &Args, contract_type: ContractType) -> Result<()> {
             contract_type.directory_name()
         ))?;
 
-    // create_new prevents overwriting existing files - todo: add a flag to force overwrite
+    // write all parents
     parents.iter().try_for_each(|p| -> Result<()> {
-        let mut f = if args.overwrite {
-            File::create(format!(
-                "{}/{}.t.sol",
-                contract_type.directory_name(),
-                p.name
-            ))
-        } else {
-            File::create_new(format!(
-                "{}/{}.t.sol",
-                contract_type.directory_name(),
-                p.name
-            ))
-        }
-        .context(format!(
-            "fail to create contract {}",
-            contract_type.directory_name()
-        ))?;
+        let mut f = create_file(
+            &format!("{}/{}.t.sol", contract_type.directory_name(), p.name),
+            args.overwrite,
+        )
+        .context(format!("Failed to create {}", p.name))?;
 
-        f.write_all(
-            p.render()
-                .context(format!("Fail to render {}", contract_type.directory_name()))?
-                .as_bytes(),
+        write_file(
+            &mut f,
+            &p.render()
+                .context(format!("Fail to render {}", contract_type.directory_name()))?,
         )
         .context(format!(
             "fail to write contract {}",
             contract_type.directory_name()
-        ))?;
+        ))
+        .context(format!("Failed to write {}", p.name))?;
 
         Ok(())
     })?;
 
-    let mut f = if args.overwrite {
-        File::create(format!(
-            "{}/{}.t.sol",
-            contract_type.directory_name(),
-            child.name
-        ))
-    } else {
-        File::create_new(format!(
-            "{}/{}.t.sol",
-            contract_type.directory_name(),
-            child.name
-        ))
-    }
-    .context(format!(
-        "Failed to create {} ",
-        contract_type.directory_name()
-    ))?;
+    // write child
+    let mut f = create_file(
+        &format!("{}/{}.t.sol", contract_type.directory_name(), child.name),
+        args.overwrite,
+    )
+    .context(format!("Failed to create {}", child.name))?;
 
-    let child_rendered = child.render().context(format!(
-        "Fail to render child {}",
-        contract_type.directory_name()
-    ))?;
+    let child_rendered = child
+        .render()
+        .context(format!("Fail to render {}", child.name))?;
 
-    f.write_all(child_rendered.as_bytes()).context(format!(
-        "Fail to write child {}",
-        contract_type.directory_name()
-    ))?;
+    write_file(&mut f, &child_rendered).context(format!("Failed to write {}", child.name))?;
 
     Ok(())
 }
@@ -139,48 +128,121 @@ pub fn generate_contract(args: &Args, contract_type: ContractType) -> Result<()>
     let fuzz_entry_point = Contract {
         licence: "MIT".to_string(),
         solc: args.solc.clone(),
-        imports: "import {PropertiesParent} from './properties/PropertiesParent.t.sol';"
-            .to_string(),
-        name: "FuzzTest".to_string(),
-        parents: "PropertiesParent".to_string(),
+        imports: contract_type.import_path(),
+        name: contract_type.parents_name(),
+        parents: contract_type.import_name(),
     };
 
-    let mut f = if args.overwrite {
-        File::create(format!("{}{}", fuzz_entry_point.name, ".t.sol"))
-    } else {
-        File::create_new(format!("{}{}", fuzz_entry_point.name, ".t.sol"))
-    }
-    .context("Failed to create entry point contract")?;
-
-    f.write_all(
-        fuzz_entry_point
-            .render()
-            .context("Fail to render")?
-            .as_bytes(),
+    let mut f = create_file(
+        &format!("{}{}", fuzz_entry_point.name, ".t.sol"),
+        args.overwrite,
     )
-    .context("Failed to write entry point")?;
+    .context(format!(
+        "Failed to create {} entry point contract",
+        contract_type.parents_name()
+    ))?;
 
-    let setup_contract = Contract {
-        licence: "MIT".to_string(),
-        solc: args.solc,
-        imports: "".to_string(),
-        name: "Setup".to_string(),
-        parents: "".to_string(),
-    };
-
-    let mut f = if args.overwrite {
-        File::create(format!("{}{}", setup_contract.name, ".t.sol"))
-    } else {
-        File::create_new(format!("{}{}", setup_contract.name, ".t.sol"))
-    }
-    .context("Fail to create setup contract")?;
-    f.write_all(
-        setup_contract
-            .render()
-            .context("Fail to redner setup contract")?
-            .as_bytes(),
+    write_file(
+        &mut f,
+        &fuzz_entry_point.render().context(format!(
+            "Fail to render {} contract",
+            contract_type.parents_name()
+        ))?,
     )
-    .context("Fail to write setup contract")?;
+    .context(format!("Failed to write {}", contract_type.parents_name()))?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_child_imports() {
+        let parents = vec![Contract {
+            licence: "MIT".to_string(),
+            solc: "0.8.23".to_string(),
+            imports: "".to_string(),
+            name: "HandlerA".to_string(),
+            parents: "HandlersParent".to_string(),
+        }];
+
+        assert_eq!(
+            parse_child_imports(parents.as_ref()),
+            "import { HandlerA } from './HandlerA.t.sol';\n"
+        );
+    }
+
+    #[test]
+    fn test_parse_child_imports_two() {
+        let parents = vec![
+            Contract {
+                licence: "MIT".to_string(),
+                solc: "0.8.23".to_string(),
+                imports: "".to_string(),
+                name: "HandlerA".to_string(),
+                parents: "HandlersParent".to_string(),
+            },
+            Contract {
+                licence: "MIT".to_string(),
+                solc: "0.8.23".to_string(),
+                imports: "".to_string(),
+                name: "HandlerB".to_string(),
+                parents: "HandlersParent".to_string(),
+            },
+        ];
+
+        assert_eq!(
+                parse_child_imports(parents.as_ref()),
+                "import { HandlerA } from './HandlerA.t.sol';\nimport { HandlerB } from './HandlerB.t.sol';\n"
+            );
+    }
+
+    #[test]
+    fn test_parse_child_imports_empty() {
+        let parents = vec![];
+        assert_eq!(parse_child_imports(parents.as_ref()), "");
+    }
+
+    #[test]
+    fn test_parse_parents() {
+        let parents = vec![Contract {
+            licence: "MIT".to_string(),
+            solc: "0.8.23".to_string(),
+            imports: "".to_string(),
+            name: "HandlerA".to_string(),
+            parents: "HandlersParent".to_string(),
+        }];
+
+        assert_eq!(parse_parents(parents.as_ref()), "HandlerA");
+    }
+
+    #[test]
+    fn test_parse_parents_two() {
+        let parents = vec![
+            Contract {
+                licence: "MIT".to_string(),
+                solc: "0.8.23".to_string(),
+                imports: "".to_string(),
+                name: "HandlerA".to_string(),
+                parents: "HandlersParent".to_string(),
+            },
+            Contract {
+                licence: "MIT".to_string(),
+                solc: "0.8.23".to_string(),
+                imports: "".to_string(),
+                name: "HandlerB".to_string(),
+                parents: "HandlersParent".to_string(),
+            },
+        ];
+
+        assert_eq!(parse_parents(parents.as_ref()), "HandlerA, HandlerB");
+    }
+
+    #[test]
+    fn test_parse_parents_empty() {
+        let parents = vec![];
+        assert_eq!(parse_parents(parents.as_ref()), "");
+    }
 }
