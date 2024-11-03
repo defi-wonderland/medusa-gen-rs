@@ -1,7 +1,7 @@
 use askama::Template;
 
 /// The contract template,
-#[derive(Template, Debug, Clone)]
+#[derive(Template, Debug, Clone, PartialEq)]
 #[template(path = "contract.sol", escape = "none")]
 pub struct Contract {
     pub licence: String,

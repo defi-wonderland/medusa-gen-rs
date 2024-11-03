@@ -158,6 +158,7 @@ pub fn generate_contract(args: &Args, contract_type: ContractType) -> Result<Con
 mod tests {
     use super::*;
     use std::env;
+    use std::path::Path;
 
     #[test]
     fn test_parse_child_imports() {
@@ -248,9 +249,9 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_family_with_handler() {
+    fn test_generate_family_with_handler() -> Result<()> {
         let tmpdir = std::env::temp_dir();
-        env::set_current_dir(&tmpdir).unwrap();
+        env::set_current_dir(&tmpdir)?;
 
         let args = Args {
             overwrite: true,
@@ -262,12 +263,20 @@ mod tests {
         let result = generate_family(&args, ContractType::Handler);
 
         assert!(result.is_ok());
+
+        assert!(Path::new("handlers").is_dir());
+        assert!(Path::new("handlers/HandlerA.t.sol").is_file());
+        assert!(Path::new("handlers/HandlerB.t.sol").is_file());
+        assert!(!Path::new("handlers/HandlerC.t.sol").is_file());
+        assert!(Path::new("handlers/HandlerParent.t.sol").is_file());
+
+        Ok(())
     }
 
     #[test]
-    fn test_generate_family_with_property() {
+    fn test_generate_family_with_property() -> Result<()> {
         let tmpdir = std::env::temp_dir();
-        env::set_current_dir(&tmpdir).unwrap();
+        env::set_current_dir(&tmpdir)?;
 
         let args = Args {
             overwrite: true,
@@ -279,6 +288,14 @@ mod tests {
         let result = generate_family(&args, ContractType::Property);
 
         assert!(result.is_ok());
+
+        assert!(Path::new("properties").is_dir());
+        assert!(Path::new("properties/PropertyA.t.sol").is_file());
+        assert!(Path::new("properties/PropertyB.t.sol").is_file());
+        assert!(!Path::new("properties/PropertyC.t.sol").is_file());
+        assert!(Path::new("properties/PropertyParent.t.sol").is_file());
+
+        Ok(())
     }
 
     #[test]
@@ -312,9 +329,9 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_contract_with_setup() {
+    fn test_generate_contract_with_setup() -> Result<()> {
         let tmpdir = std::env::temp_dir();
-        env::set_current_dir(&tmpdir).unwrap();
+        env::set_current_dir(&tmpdir)?;
 
         let args = Args {
             overwrite: true,
@@ -326,12 +343,26 @@ mod tests {
         let result = generate_contract(&args, ContractType::Setup);
 
         assert!(result.is_ok());
+
+        assert_eq!(
+            result.unwrap(),
+            Contract {
+                licence: "MIT".to_string(),
+                solc: "0.8.23".to_string(),
+                imports: "".to_string(),
+                name: "Setup".to_string(),
+                parents: "".to_string(),
+            }
+        );
+
+        assert!(Path::new("Setup.t.sol").is_file());
+        Ok(())
     }
 
     #[test]
-    fn test_generate_contract_with_entry_point() {
+    fn test_generate_contract_with_entry_point() -> Result<()> {
         let tmpdir = std::env::temp_dir();
-        env::set_current_dir(&tmpdir).unwrap();
+        env::set_current_dir(&tmpdir)?;
 
         let args = Args {
             overwrite: true,
@@ -343,5 +374,21 @@ mod tests {
         let result = generate_contract(&args, ContractType::EntryPoint);
 
         assert!(result.is_ok());
+
+        assert_eq!(
+            result.unwrap(),
+            Contract {
+                licence: "MIT".to_string(),
+                solc: "0.8.23".to_string(),
+                imports: "import {PropertiesParent} from './properties/PropertiesParent.t.sol';"
+                    .to_string(),
+                name: "FuzzTest".to_string(),
+                parents: "PropertiesParent".to_string(),
+            }
+        );
+
+        assert!(Path::new("FuzzTest.t.sol").is_file());
+
+        Ok(())
     }
 }
