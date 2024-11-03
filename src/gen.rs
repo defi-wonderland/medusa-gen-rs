@@ -1,10 +1,8 @@
 use anyhow::{Context, Result};
 use askama::Template;
-use mockall::*;
 use std::fmt::Write;
 use std::fs::{DirBuilder, File};
 use std::io::Write as WriteIO;
-use std::path::Path;
 
 use crate::types::Contract;
 use crate::{Args, ContractType};
@@ -30,6 +28,7 @@ fn parse_parents(parents: &[Contract]) -> String {
         .to_string()
 }
 
+/// Create a new file at the given path, if should_overwrite is true, overwrite the file
 fn create_file(path: &str, should_overwrite: bool) -> Result<File> {
     let f = if should_overwrite {
         File::create(path)
@@ -40,6 +39,7 @@ fn create_file(path: &str, should_overwrite: bool) -> Result<File> {
     Ok(f)
 }
 
+/// Write a string to a file, as bytes
 fn write_file(f: &mut File, child_rendered: &str) -> Result<()> {
     f.write_all(child_rendered.as_bytes())?;
     Ok(())
@@ -58,7 +58,9 @@ pub fn generate_family(args: &Args, contract_type: ContractType) -> Result<()> {
     let nb_parents = match contract_type {
         ContractType::Handler => args.nb_handlers,
         ContractType::Property => args.nb_properties,
-        _ => Err(anyhow::anyhow!("Invalid contract type in gen family"))?,
+        ContractType::EntryPoint | ContractType::Setup => {
+            return Err(anyhow::anyhow!("Invalid contract type in gen family"))?
+        }
     };
 
     // Generate the parent contracts
@@ -155,6 +157,7 @@ pub fn generate_contract(args: &Args, contract_type: ContractType) -> Result<Con
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env;
 
     #[test]
     fn test_parse_child_imports() {
@@ -246,6 +249,9 @@ mod tests {
 
     #[test]
     fn test_generate_family_with_handler() {
+        let tmpdir = std::env::temp_dir();
+        env::set_current_dir(&tmpdir).unwrap();
+
         let args = Args {
             overwrite: true,
             solc: "0.8.23".to_string(),
@@ -260,6 +266,9 @@ mod tests {
 
     #[test]
     fn test_generate_family_with_property() {
+        let tmpdir = std::env::temp_dir();
+        env::set_current_dir(&tmpdir).unwrap();
+
         let args = Args {
             overwrite: true,
             solc: "0.8.23".to_string(),
@@ -281,9 +290,10 @@ mod tests {
             nb_properties: 2,
         };
 
-        let result = generate_contract(&args, ContractType::Setup);
+        let result = generate_family(&args, ContractType::Setup);
+        let error = result.as_ref().unwrap_err();
 
-        assert!(result.is_err());
+        assert_eq!(format!("{}", error), "Invalid contract type in gen family");
     }
 
     #[test]
@@ -295,13 +305,17 @@ mod tests {
             nb_properties: 2,
         };
 
-        let result = generate_contract(&args, ContractType::EntryPoint);
+        let result = generate_family(&args, ContractType::EntryPoint);
+        let error = result.as_ref().unwrap_err();
 
-        assert!(result.is_err());
+        assert_eq!(format!("{}", error), "Invalid contract type in gen family");
     }
 
     #[test]
     fn test_generate_contract_with_setup() {
+        let tmpdir = std::env::temp_dir();
+        env::set_current_dir(&tmpdir).unwrap();
+
         let args = Args {
             overwrite: true,
             solc: "0.8.23".to_string(),
@@ -315,7 +329,10 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_contract_with_entry_poing() {
+    fn test_generate_contract_with_entry_point() {
+        let tmpdir = std::env::temp_dir();
+        env::set_current_dir(&tmpdir).unwrap();
+
         let args = Args {
             overwrite: true,
             solc: "0.8.23".to_string(),
