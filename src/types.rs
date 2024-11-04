@@ -16,13 +16,9 @@ pub struct Contract {
 }
 
 impl Contract {
-    pub fn write_rendered_contract(&self, path: &Path, overwrite: bool) -> Result<()> {
-        let mut f = if overwrite {
-            File::create(path.join(format!("{}{}", self.name, ".t.sol")))
-        } else {
-            File::create_new(path.join(format!("{}{}", self.name, ".t.sol")))
-        }
-        .context(format!("Failed to create contract {}", self.name))?;
+    pub fn write_rendered_contract(&self, path: &Path) -> Result<()> {
+        let mut f = File::create_new(path.join(format!("{}{}", self.name, ".t.sol")))
+            .context(format!("Failed to create contract {}", self.name))?;
 
         let rendered = self
             .render()
@@ -118,8 +114,8 @@ impl ContractType {
 
     pub fn name(&self) -> String {
         match self {
-            ContractType::Handler => "Handler".to_string(),
-            ContractType::Property => "Property".to_string(),
+            ContractType::Handler => "Handlers".to_string(),
+            ContractType::Property => "Properties".to_string(),
             ContractType::EntryPoint => "FuzzTest".to_string(),
             ContractType::Setup => "Setup".to_string(),
         }

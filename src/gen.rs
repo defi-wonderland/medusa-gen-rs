@@ -1,8 +1,8 @@
 use crate::types::{Contract, ContractBuilder};
 use crate::{Args, ContractType};
 use anyhow::{Context, Result};
+use fs_extra::dir::{copy, CopyOptions};
 use std::fmt::Write;
-use std::fs;
 use std::fs::DirBuilder;
 use std::path::Path;
 use tempfile::TempDir;
@@ -58,12 +58,10 @@ fn generate_parents(
             .with_name(format!("{}{}", contract_type.name(), (b'A' + i) as char))
             .build();
 
-        contract
-            .write_rendered_contract(path, args.overwrite)
-            .context(format!(
-                "Failed to write rendered {} parent",
-                contract_type.name()
-            ))?;
+        contract.write_rendered_contract(path).context(format!(
+            "Failed to write rendered {} parent",
+            contract_type.name()
+        ))?;
 
         parents.push(contract);
     }
@@ -71,14 +69,18 @@ fn generate_parents(
     Ok(parents)
 }
 
-/// Move the content of a temp folder to the current directory
-fn move_temp_contents(temp_dir: &TempDir) -> Result<()> {
-    for entry in fs::read_dir(temp_dir.path())? {
-        let entry = entry?;
-        let file_name = &entry.file_name();
-        fs::rename(entry.path(), Path::new(".").join(file_name))
-            .with_context(|| format!("Failed to move: {:?}", file_name))?;
-    }
+/// Move the content of a temp folder to the fuzz test folder
+fn move_temp_contents(temp_dir: &TempDir, overwrite: bool) -> Result<()> {
+    let options = CopyOptions {
+        overwrite,
+        skip_exist: false,
+        copy_inside: true,
+        ..Default::default()
+    };
+
+    copy(temp_dir.path(), "./test/invariants/fuzz", &options)
+        .context("Failed to copy temp directory contents")?;
+
     Ok(())
 }
 
@@ -101,7 +103,7 @@ pub fn generate_test_suite(args: &Args) -> Result<()> {
         .build();
 
     handler_child
-        .write_rendered_contract(temp_dir.path(), args.overwrite)
+        .write_rendered_contract(&temp_dir.path().join(ContractType::Handler.directory_name()))
         .context("Failed to write rendered handler child")?;
 
     let properties_parents = generate_parents(
@@ -121,7 +123,11 @@ pub fn generate_test_suite(args: &Args) -> Result<()> {
         .build();
 
     property_child
-        .write_rendered_contract(temp_dir.path(), args.overwrite)
+        .write_rendered_contract(
+            &temp_dir
+                .path()
+                .join(ContractType::Property.directory_name()),
+        )
         .context("Failed to write rendered property child")?;
 
     let entry_point = ContractBuilder::new()
@@ -129,7 +135,7 @@ pub fn generate_test_suite(args: &Args) -> Result<()> {
         .build();
 
     entry_point
-        .write_rendered_contract(temp_dir.path(), args.overwrite)
+        .write_rendered_contract(temp_dir.path())
         .context("Failed to write rendered entry point")?;
 
     let setup = ContractBuilder::new()
@@ -137,10 +143,10 @@ pub fn generate_test_suite(args: &Args) -> Result<()> {
         .build();
 
     setup
-        .write_rendered_contract(temp_dir.path(), args.overwrite)
+        .write_rendered_contract(temp_dir.path())
         .context("Failed to write rendered setup point")?;
 
-    move_temp_contents(&temp_dir).context("Failed to move temp contents")?;
+    move_temp_contents(&temp_dir, args.overwrite).context("Failed to move temp contents")?;
 
     Ok(())
 }
