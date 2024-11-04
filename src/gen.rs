@@ -46,10 +46,10 @@ fn generate_parents(
 
     DirBuilder::new()
         .recursive(true)
-        .create(contract_type.directory_name())
+        .create(path)
         .context(format!(
             "Fail to create folder for {}",
-            contract_type.name()
+            contract_type.directory_name()
         ))?;
 
     for i in 0..nb_parents {
@@ -59,10 +59,7 @@ fn generate_parents(
             .build();
 
         contract
-            .write_rendered_contract(
-                &path.join(ContractType::Handler.directory_name()),
-                args.overwrite,
-            )
+            .write_rendered_contract(path, args.overwrite)
             .context(format!(
                 "Failed to write rendered {} parent",
                 contract_type.name()
@@ -87,10 +84,14 @@ fn move_temp_contents(temp_dir: &TempDir) -> Result<()> {
 
 /// Generate and write the test suite
 pub fn generate_test_suite(args: &Args) -> Result<()> {
-    let temp_dir = TempDir::new()?; // will be deleted once dropped
+    let temp_dir = TempDir::new().context("Failed creating temp dir")?; // will be deleted once dropped
 
-    let handler_parents = generate_parents(ContractType::Handler, args, temp_dir.path())
-        .context("Failed to generate handler parents")?;
+    let handler_parents = generate_parents(
+        ContractType::Handler,
+        args,
+        &temp_dir.path().join(ContractType::Handler.directory_name()),
+    )
+    .context("Failed to generate handler parents")?;
 
     let handler_child = ContractBuilder::new()
         .with_type(&ContractType::Handler)
@@ -103,8 +104,14 @@ pub fn generate_test_suite(args: &Args) -> Result<()> {
         .write_rendered_contract(temp_dir.path(), args.overwrite)
         .context("Failed to write rendered handler child")?;
 
-    let properties_parents = generate_parents(ContractType::Property, args, temp_dir.path())
-        .context("Failed to generate handler property")?;
+    let properties_parents = generate_parents(
+        ContractType::Property,
+        args,
+        &temp_dir
+            .path()
+            .join(ContractType::Property.directory_name()),
+    )
+    .context("Failed to generate handler property")?;
 
     let property_child = ContractBuilder::new()
         .with_type(&ContractType::Property)
