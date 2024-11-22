@@ -28,45 +28,53 @@ fn parse_parents(parents: &[Contract]) -> String {
         .to_string()
 }
 
-/// Generate the parents contracts and write them to the temp folder
-fn generate_parents(
-    contract_type: ContractType,
-    args: &Args,
-    path: &Path,
-) -> Result<Vec<Contract>> {
-    let nb_parents = match contract_type {
-        ContractType::Handler => args.nb_handlers,
-        ContractType::Property => args.nb_properties,
-        ContractType::EntryPoint | ContractType::Setup => {
-            return Err(anyhow::anyhow!("Invalid contract type in generate parents"))?
-        }
-    };
+/// create a vec of contracts of a given type
+fn create_contracts(contract_type: ContractType, count: u8, path: &Path) -> Result<Vec<Contract>> {
+    let mut contracts = Vec::new();
 
-    let mut parents = Vec::new();
-
+    // directories
     DirBuilder::new()
         .recursive(true)
         .create(path)
         .context(format!(
-            "Fail to create folder for {}",
+            "Failed to create directory for {} contracts",
             contract_type.directory_name()
         ))?;
 
-    for i in 0..nb_parents {
+    for i in 0..count {
         let contract = ContractBuilder::new()
             .with_type(&contract_type)
             .with_name(format!("{}{}", contract_type.name(), (b'A' + i) as char))
             .build();
 
         contract.write_rendered_contract(path).context(format!(
-            "Failed to write rendered {} parent",
+            "Failed to write rendered {} contract",
             contract_type.name()
         ))?;
 
-        parents.push(contract);
+        contracts.push(contract);
     }
 
-    Ok(parents)
+    Ok(contracts)
+}
+
+/// Generate parents contracts and write them to a temp folder
+fn generate_parents(
+    contract_type: ContractType,
+    args: &Args,
+    path: &Path,
+) -> Result<Vec<Contract>> {
+    // Determine the number of parents to generate
+    let count = match contract_type {
+        ContractType::Handler => args.nb_handlers,
+        ContractType::Property => args.nb_properties,
+        _ => {
+            return Err(anyhow::anyhow!("Invalid contract type in generate_parents"));
+        }
+    };
+
+    // Use the helper function to generate the contracts
+    create_contracts(contract_type, count, path)
 }
 
 /// Move the content of a temp folder to the fuzz test folder

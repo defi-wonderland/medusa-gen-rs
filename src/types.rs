@@ -51,16 +51,6 @@ impl ContractBuilder {
         }
     }
 
-    pub fn with_licence(mut self, licence: String) -> Self {
-        self.licence = licence;
-        self
-    }
-
-    pub fn with_solc(mut self, solc: String) -> Self {
-        self.solc = solc;
-        self
-    }
-
     pub fn with_imports(mut self, imports: String) -> Self {
         self.imports = imports;
         self
@@ -77,9 +67,9 @@ impl ContractBuilder {
     }
 
     pub fn with_type(mut self, contract_type: &ContractType) -> Self {
-        self.imports = contract_type.import();
-        self.name = contract_type.name();
-        self.parents = contract_type.import_name();
+        self.imports = contract_type.import().to_owned();
+        self.name = contract_type.name().to_owned();
+        self.parents = contract_type.import_name().to_owned();
         self
     }
 
@@ -104,42 +94,42 @@ pub enum ContractType {
 
 /// Hold the contract type specific information
 impl ContractType {
-    pub fn directory_name(&self) -> String {
+    pub fn directory_name(&self) -> &'static str {
         match self {
-            ContractType::Handler => "handlers".to_string(),
-            ContractType::Property => "properties".to_string(),
-            _ => "".to_string(),
+            ContractType::Handler => "handlers",
+            ContractType::Property => "properties",
+            _ => "",
         }
     }
 
-    pub fn name(&self) -> String {
+    pub fn name(&self) -> &'static str {
         match self {
-            ContractType::Handler => "Handlers".to_string(),
-            ContractType::Property => "Properties".to_string(),
-            ContractType::EntryPoint => "FuzzTest".to_string(),
-            ContractType::Setup => "Setup".to_string(),
+            ContractType::Handler => "Handlers",
+            ContractType::Property => "Properties",
+            ContractType::EntryPoint => "FuzzTest",
+            ContractType::Setup => "Setup",
         }
     }
 
-    pub fn import(&self) -> String {
+    pub fn import(&self) -> &'static str {
         match self {
-            ContractType::Handler => "import {Setup} from '../Setup.t.sol';".to_string(),
+            ContractType::Handler => "import {Setup} from '../Setup.t.sol';",
             ContractType::Property => {
-                "import {HandlersParent} from '../handlers/HandlersParent.t.sol';".to_string()
+                "import {HandlersParent} from '../handlers/HandlersParent.t.sol';"
             }
             ContractType::EntryPoint => {
-                "import {PropertiesParent} from './properties/PropertiesParent.t.sol';".to_string()
+                "import {PropertiesParent} from './properties/PropertiesParent.t.sol';"
             }
-            ContractType::Setup => "".to_string(),
+            ContractType::Setup => "",
         }
     }
 
-    pub fn import_name(&self) -> String {
+    pub fn import_name(&self) -> &'static str {
         match self {
-            ContractType::Handler => "Setup".to_string(),
-            ContractType::Property => "HandlersParent".to_string(),
-            ContractType::EntryPoint => "PropertiesParent".to_string(),
-            ContractType::Setup => "".to_string(),
+            ContractType::Handler => "Setup",
+            ContractType::Property => "HandlersParent",
+            ContractType::EntryPoint => "PropertiesParent",
+            ContractType::Setup => "",
         }
     }
 }
