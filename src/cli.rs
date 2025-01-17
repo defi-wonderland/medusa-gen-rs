@@ -16,6 +16,6 @@ pub struct Args {
     pub nb_properties: u8,
 
     /// Overwrite existing files
-    #[arg(short, long, action = clap::ArgAction::SetFalse)]
+    #[arg(short, long, default_value_t = false)]
     pub overwrite: bool,
 }

@@ -79,10 +79,24 @@ fn generate_parents(
 
 /// Move the content of a temp folder to the fuzz test folder
 fn move_temp_contents(temp_dir: &TempDir, overwrite: bool) -> Result<()> {
+    let path = Path::new("./test/invariants/fuzz");
+    if path.exists() {
+        if !overwrite {
+            return Err(anyhow::anyhow!(
+                "Fuzz test folder already exists, did you mean --overwrite ?"
+            ));
+        }
+    } else {
+        DirBuilder::new()
+            .recursive(true)
+            .create(path)
+            .context("Failed to create fuzz test folder")?;
+    }
+
     let options = CopyOptions {
         overwrite,
-        skip_exist: false,
-        copy_inside: true,
+        skip_exist: !overwrite,
+        content_only: true,
         ..Default::default()
     };
 
