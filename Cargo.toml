@@ -1,10 +1,15 @@
 [package]
-authors = ["Wonderland"]
-name = "medusa-gen-rs"
+authors = ["simon-something", "Wonderland"]
+name = "medusa-gen"
 description = "Generate a set of contracts for Medusa tests"
+homepage = "https://github.com/defi-wonderland/medusa-gen-rs"
 version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/defi-wonderland/medusa-gen-rs"
+license = "MIT"
+readme = "readme.MD"
+keywords = ["medusa", "solidity", "fuzzing", "template"]
+categories = ["command-line-utilities"]
 
 [[bin]]
 name = "medusa-gen"
