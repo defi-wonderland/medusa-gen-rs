@@ -1,7 +1,36 @@
-use clap::Parser;
+use clap::{crate_authors, Parser};
 
 #[derive(Parser)]
-#[command(version, about = "Generate template for Medusa fuzzing campaigns")]
+#[command(
+    name = "youdusa",
+    author = crate_authors!(",\n"),
+    version,
+    about = "Generate template for Medusa fuzzing campaigns",
+    long_about = None,
+
+    help_template = concat!(
+include_str!("ascii_art.txt"),
+"Made with ♥ by Wonderland (https://defi.sucks)\n
+╔══════════════════════════════════╗\n\
+║    \x1B[31mMedusa Template Generator\x1B[0m     ║\n\
+╚══════════════════════════════════╝\n\
+\n\
+{about}\n\
+\n\
+{usage-heading} {usage}\n\
+\n\
+{all-args}\n\
+\n\
+Authors:{author-section}
+Version: {version}
+\n\
+For more information, visit: https://github.com/defi-wonderland/medusa-gen-rs\n",
+))]
+
+
+
+
+
 pub struct Args {
     /// Solidity version
     #[arg(short, long, default_value = "0.8.23")]
