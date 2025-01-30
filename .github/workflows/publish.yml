@@ -1,0 +1,35 @@
+name: publish
+
+on:
+  push:
+    tags: [ 'v*.*.*' ]
+
+env:
+    CARGO_TERM_COLOR: always
+      
+jobs:
+    crates-io:
+        name: crates-io
+        runs-on: ubuntu-latest
+        environment: prod
+        steps:
+            - uses: actions/checkout@v4
+            - run: cargo publish --token ${CRATES_API_TOKEN}
+        env:
+          CRATES_API_TOKEN: ${{ secrets.CRATES_API_TOKEN }}
+
+    github-release:
+        name: github-release
+        runs-on: ubuntu-latest
+        environment: prod
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@master
+            - name: Create Release
+              id: create_release
+              uses: softprops/action-gh-release@v2
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                name: ${{ github.ref_name }}
+                generate_release_notes: true
