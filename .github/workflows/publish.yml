@@ -4,10 +4,6 @@ on:
   push:
     tags: [ 'v*.*.*' ]
 
-concurrency:
-    group: ${{github.workflow}}-${{github.ref}}
-    cancel-in-progress: true
-      
 env:
     CARGO_TERM_COLOR: always
       
@@ -35,5 +31,5 @@ jobs:
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               with:
-                tag_name: ${{ github.ref }}
+                name: ${{ github.ref_name }}
                 generate_release_notes: true
