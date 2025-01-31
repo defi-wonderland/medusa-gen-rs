@@ -14,39 +14,17 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  fmt:
-    name: Format
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Fmt check
-        run: cargo fmt --check
-
-  check:
-    name: Check
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check
-        run: cargo check
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run clippy
-        run: cargo clippy --no-deps --all-targets
-
   tests:
-    name: Unit and Integration Tests
-    runs-on: ubuntu-latest
+    name: Unit and Integration Tests on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@v4
+      - name: Cache cargo output
+        uses: Swatinem/rust-cache@v2
       - name: Build
         run: cargo build
       - name: Run tests
@@ -64,8 +42,8 @@ jobs:
       - name: Cache cargo output
         uses: Swatinem/rust-cache@v2
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@stable
+      # - name: Install toolchain
+      #   uses: dtolnay/rust-toolchain@stable
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
