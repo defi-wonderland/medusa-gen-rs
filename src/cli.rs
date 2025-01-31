@@ -26,7 +26,6 @@ Version: {version}
 \n\
 For more information, visit: https://github.com/defi-wonderland/medusa-gen-rs\n",
 ))]
-
 pub struct Args {
     /// Solidity version
     #[arg(short, long, default_value = "0.8.23")]
