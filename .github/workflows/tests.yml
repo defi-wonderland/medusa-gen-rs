@@ -115,9 +115,7 @@ jobs:
           new_cov="${new_cov//'%'/'%25'}"
           new_cov="${new_cov//$'\n'/'%0A'}"
           new_cov="${new_cov//$'\r'/'%0D'}"
-          echo "new_cov_comment<<EOF" >> $GITHUB_OUTPUT
-          echo "$new_cov" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "::set-output name=new_cov_comment::$new_cov"
 
       - name: Add PR comment
         uses: mshick/add-pr-comment@v2
