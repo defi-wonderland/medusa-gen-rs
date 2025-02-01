@@ -1,8 +1,8 @@
-mod types;
 pub mod cli;
+mod types;
 
 use crate::cli::Args;
-use crate::types::{Contract, ContractType, ContractBuilder};
+use crate::types::{Contract, ContractBuilder, ContractType};
 
 use anyhow::{Context, Result};
 use fs_extra::dir::{copy, CopyOptions};
@@ -281,7 +281,7 @@ mod tests {
         let contracts = create_contracts(
             &contract_type,
             count,
-            &temp_dir.path().join(contract_type.directory_name())
+            &temp_dir.path().join(contract_type.directory_name()),
         )?;
 
         // Check that the correct number of contracts was created
@@ -313,7 +313,7 @@ mod tests {
         let contracts = create_contracts(
             &contract_type,
             count,
-            &temp_dir.path().join(contract_type.directory_name())
+            &temp_dir.path().join(contract_type.directory_name()),
         )?;
 
         // Check that no contracts were created
@@ -352,7 +352,9 @@ mod tests {
         let property_parents = generate_parents(
             ContractType::Property,
             &args,
-            &temp_dir.path().join(ContractType::Property.directory_name()),
+            &temp_dir
+                .path()
+                .join(ContractType::Property.directory_name()),
         )?;
 
         assert_eq!(property_parents.len(), 1);
@@ -371,11 +373,7 @@ mod tests {
             nb_properties: 1,
         };
 
-        let result = generate_parents(
-            ContractType::Setup,
-            &args,
-            temp_dir.path(),
-        );
+        let result = generate_parents(ContractType::Setup, &args, temp_dir.path());
 
         assert!(result.is_err());
         assert_eq!(
@@ -389,7 +387,7 @@ mod tests {
     #[serial]
     fn test_move_temp_contents() -> Result<()> {
         let temp_dir = TempDir::new().context("Failed to create temp dir")?;
-        
+
         // Create a test file in temp directory
         let test_file = temp_dir.path().join("test.txt");
         std::fs::write(&test_file, "test content")?;
@@ -409,11 +407,11 @@ mod tests {
     #[serial]
     fn test_move_temp_contents_no_overwrite() -> Result<()> {
         let temp_dir = TempDir::new().context("Failed to create temp dir")?;
-        
+
         std::fs::create_dir_all("./test/invariants/fuzz")?;
-        
+
         let result = move_temp_contents(&temp_dir, false);
-        
+
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
@@ -428,7 +426,7 @@ mod tests {
     #[serial]
     fn test_move_temp_contents_new_directory() -> Result<()> {
         let temp_dir = TempDir::new().context("Failed to create temp dir")?;
-        
+
         // source directory with test file
         let source_dir = temp_dir.path().join("source");
         std::fs::create_dir(&source_dir)?;
@@ -436,7 +434,8 @@ mod tests {
         std::fs::write(&test_file, "test content")?;
 
         // TempDir for source that will be moved
-        let source_temp = TempDir::new_in(&source_dir).context("Failed to create source temp dir")?;
+        let source_temp =
+            TempDir::new_in(&source_dir).context("Failed to create source temp dir")?;
         std::fs::write(source_temp.path().join("test.txt"), "test content")?;
 
         // Set current directory to temp_dir
