@@ -14,12 +14,19 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+
+######################################################################
+#                   General checks/fmt and docs
+######################################################################
+
   fmt:
     name: Format
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+      - name: Cache cargo output
+        uses: Swatinem/rust-cache@v2
       - name: Fmt check
         run: cargo fmt --check
 
@@ -29,6 +36,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Cache cargo output
+        uses: Swatinem/rust-cache@v2
       - name: Check
         run: cargo check
 
@@ -38,15 +47,40 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Cache cargo output
+        uses: Swatinem/rust-cache@v2
       - name: Run clippy
-        run: cargo clippy --no-deps --all-targets
+        run: cargo clippy --no-deps --all-targets -- -D warnings
+
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache cargo output
+        uses: Swatinem/rust-cache@v2
+      - name: Build docs
+        run: cargo doc --no-deps --all-features
+        env:
+          RUSTFLAGS: "-D warnings"
+
+######################################################################
+#       Unit/integration/coverage tests, multi OS
+######################################################################
 
   tests:
-    name: Unit and Integration Tests
-    runs-on: ubuntu-latest
+    name: Unit and Integration Tests on ${{ matrix.os }}
+    timeout-minutes: 10
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+      fail-fast: false # continue running other OS even if one fails
 
     steps:
       - uses: actions/checkout@v4
+      - name: Cache cargo output
+        uses: Swatinem/rust-cache@v2
       - name: Build
         run: cargo build
       - name: Run tests
@@ -54,6 +88,7 @@ jobs:
 
   coverage:
     name: Coverage
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write

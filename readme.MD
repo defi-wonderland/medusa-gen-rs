@@ -2,6 +2,10 @@
 
 This is a tool to generate a set of contracts for a Medusa testing campaign, following Wonderland usage.
 
+Made with ♥ by Wonderland (https://defi.sucks)
+
+## Description 
+
 The following contracts are generated, according to this structure (I know, we call the child "parent" for...reason):
 - fuzz/
   - FuzzTest.sol
@@ -28,7 +32,7 @@ The inheritance tree is as follows, FuzzTest is the entry point:
 
 This is an early alpha version, only available by building from sources:
 ```bash
-cargo install --git https://github.com/defiSucks/medusa-gen.rs
+cargo install medusa-gen
 ```
 
 ## Usage

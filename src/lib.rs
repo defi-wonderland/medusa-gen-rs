@@ -1,5 +1,9 @@
-use crate::types::{Contract, ContractBuilder};
-use crate::{Args, ContractType};
+pub mod cli;
+mod types;
+
+use crate::cli::Args;
+use crate::types::{Contract, ContractBuilder, ContractType};
+
 use anyhow::{Context, Result};
 use fs_extra::dir::{copy, CopyOptions};
 use std::fmt::Write;
@@ -29,7 +33,7 @@ fn parse_parents(parents: &[Contract]) -> String {
 }
 
 /// create a vec of contracts of a given type
-fn create_contracts(contract_type: ContractType, count: u8, path: &Path) -> Result<Vec<Contract>> {
+fn create_contracts(contract_type: &ContractType, count: u8, path: &Path) -> Result<Vec<Contract>> {
     let mut contracts = Vec::new();
 
     // directories
@@ -43,7 +47,7 @@ fn create_contracts(contract_type: ContractType, count: u8, path: &Path) -> Resu
 
     for i in 0..count {
         let contract = ContractBuilder::new()
-            .with_type(&contract_type)
+            .with_type(contract_type)
             .with_name(format!("{}{}", contract_type.name(), (b'A' + i) as char))
             .build();
 
@@ -74,7 +78,7 @@ fn generate_parents(
     };
 
     // Use the helper function to generate the contracts
-    create_contracts(contract_type, count, path)
+    create_contracts(&contract_type, count, path)
 }
 
 /// Move the content of a temp folder to the fuzz test folder
@@ -178,6 +182,7 @@ pub fn generate_test_suite(args: &Args) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
     fn test_parse_child_imports() {
@@ -267,157 +272,221 @@ mod tests {
         assert_eq!(parse_parents(parents.as_ref()), "");
     }
 
-    // #[test]
-    // fn test_generate_family_with_handler() -> Result<()> {
-    //     let tmpdir = std::env::temp_dir();
-    //     env::set_current_dir(&tmpdir)?;
+    #[test]
+    fn test_create_contracts() -> Result<()> {
+        let temp_dir = TempDir::new().context("Failed to create temp dir")?;
+        let contract_type = ContractType::Handler;
+        let count = 2;
 
-    //     let args = Args {
-    //         overwrite: true,
-    //         solc: "0.8.23".to_string(),
-    //         nb_handlers: 2,
-    //         nb_properties: 2,
-    //     };
+        let contracts = create_contracts(
+            &contract_type,
+            count,
+            &temp_dir.path().join(contract_type.directory_name()),
+        )?;
 
-    //     let result = generate_family(&args, ContractType::Handler);
+        // Check that the correct number of contracts was created
+        assert_eq!(contracts.len(), 2);
 
-    //     assert!(result.is_ok());
+        // Check that the contracts have the expected names
+        assert_eq!(contracts[0].name, "HandlersA");
+        assert_eq!(contracts[1].name, "HandlersB");
 
-    //     assert!(Path::new("handlers").is_dir());
-    //     assert!(Path::new("handlers/HandlerA.t.sol").is_file());
-    //     assert!(Path::new("handlers/HandlerB.t.sol").is_file());
-    //     assert!(!Path::new("handlers/HandlerC.t.sol").is_file());
-    //     assert!(Path::new("handlers/HandlerParent.t.sol").is_file());
+        // Verify the files were created in the correct directory
+        let handler_dir = temp_dir.path().join("handlers");
+        assert!(handler_dir.exists());
+        assert!(handler_dir.is_dir());
 
-    //     Ok(())
-    // }
+        // Check that the contract files exist
+        assert!(handler_dir.join("HandlersA.t.sol").exists());
+        assert!(handler_dir.join("HandlersB.t.sol").exists());
+        assert!(!handler_dir.join("HandlersC.t.sol").exists());
 
-    // #[test]
-    // fn test_generate_family_with_property() -> Result<()> {
-    //     let tmpdir = std::env::temp_dir();
-    //     env::set_current_dir(&tmpdir)?;
+        Ok(())
+    }
 
-    //     let args = Args {
-    //         overwrite: true,
-    //         solc: "0.8.23".to_string(),
-    //         nb_handlers: 2,
-    //         nb_properties: 2,
-    //     };
+    #[test]
+    fn test_create_contracts_empty() -> Result<()> {
+        let temp_dir = TempDir::new().context("Failed to create temp dir")?;
+        let contract_type = ContractType::Handler;
+        let count = 0;
 
-    //     let result = generate_family(&args, ContractType::Property);
+        let contracts = create_contracts(
+            &contract_type,
+            count,
+            &temp_dir.path().join(contract_type.directory_name()),
+        )?;
 
-    //     assert!(result.is_ok());
+        // Check that no contracts were created
+        assert!(contracts.is_empty());
 
-    //     assert!(Path::new("properties").is_dir());
-    //     assert!(Path::new("properties/PropertyA.t.sol").is_file());
-    //     assert!(Path::new("properties/PropertyB.t.sol").is_file());
-    //     assert!(!Path::new("properties/PropertyC.t.sol").is_file());
-    //     assert!(Path::new("properties/PropertyParent.t.sol").is_file());
+        // Verify the directory was still created
+        let handler_dir = temp_dir.path().join("handlers");
+        assert!(handler_dir.exists());
+        assert!(handler_dir.is_dir());
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
-    // #[test]
-    // fn test_generate_family_with_setup_fail() {
-    //     let args = Args {
-    //         overwrite: true,
-    //         solc: "0.8.23".to_string(),
-    //         nb_handlers: 2,
-    //         nb_properties: 2,
-    //     };
+    #[test]
+    fn test_generate_parents() -> Result<()> {
+        let temp_dir = TempDir::new().context("Failed to create temp dir")?;
+        let args = Args {
+            overwrite: true,
+            solc: "0.8.23".to_string(),
+            nb_handlers: 2,
+            nb_properties: 1,
+        };
 
-    //     let result = generate_family(&args, ContractType::Setup);
-    //     let error = result.as_ref().unwrap_err();
+        // Test Handler parents
+        let handler_parents = generate_parents(
+            ContractType::Handler,
+            &args,
+            &temp_dir.path().join(ContractType::Handler.directory_name()),
+        )?;
 
-    //     assert_eq!(format!("{}", error), "Invalid contract type in gen family");
-    // }
+        assert_eq!(handler_parents.len(), 2);
+        assert_eq!(handler_parents[0].name, "HandlersA");
+        assert_eq!(handler_parents[1].name, "HandlersB");
 
-    // #[test]
-    // fn test_generate_family_with_entry_point_fail() {
-    //     let args = Args {
-    //         overwrite: true,
-    //         solc: "0.8.23".to_string(),
-    //         nb_handlers: 2,
-    //         nb_properties: 2,
-    //     };
+        // Test Property parents
+        let property_parents = generate_parents(
+            ContractType::Property,
+            &args,
+            &temp_dir
+                .path()
+                .join(ContractType::Property.directory_name()),
+        )?;
 
-    //     let result = generate_family(&args, ContractType::EntryPoint);
-    //     let error = result.as_ref().unwrap_err();
+        assert_eq!(property_parents.len(), 1);
+        assert_eq!(property_parents[0].name, "PropertiesA");
 
-    //     assert_eq!(format!("{}", error), "Invalid contract type in gen family");
-    // }
+        Ok(())
+    }
 
-    // #[test]
-    // fn test_generate_contract_with_setup() -> Result<()> {
-    //     let tmpdir = std::env::temp_dir();
-    //     env::set_current_dir(&tmpdir)?;
+    #[test]
+    fn test_generate_parents_invalid_type() {
+        let temp_dir = TempDir::new().unwrap();
+        let args = Args {
+            overwrite: true,
+            solc: "0.8.23".to_string(),
+            nb_handlers: 2,
+            nb_properties: 1,
+        };
 
-    //     let args = Args {
-    //         overwrite: true,
-    //         solc: "0.8.23".to_string(),
-    //         nb_handlers: 2,
-    //         nb_properties: 2,
-    //     };
+        let result = generate_parents(ContractType::Setup, &args, temp_dir.path());
 
-    //     let result = generate_contract(
-    //         &args,
-    //         ContractType::Setup,
-    //         &ContractType::Setup.name(),
-    //         &tmpdir,
-    //     );
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Invalid contract type in generate_parents"
+        );
+    }
 
-    //     assert!(result.is_ok());
+    // All the move_temp_contents are in serial to avoid having race conditions
+    #[test]
+    #[serial]
+    fn test_move_temp_contents() -> Result<()> {
+        let temp_dir = TempDir::new().context("Failed to create temp dir")?;
 
-    //     assert_eq!(
-    //         result.unwrap(),
-    //         Contract {
-    //             licence: "MIT".to_string(),
-    //             solc: "0.8.23".to_string(),
-    //             imports: "".to_string(),
-    //             name: "Setup".to_string(),
-    //             parents: "".to_string(),
-    //         }
-    //     );
+        // Create a test file in temp directory
+        let test_file = temp_dir.path().join("test.txt");
+        std::fs::write(&test_file, "test content")?;
 
-    //     assert!(Path::new("Setup.t.sol").is_file());
-    //     Ok(())
-    // }
+        let result = move_temp_contents(&temp_dir, true);
+        assert!(result.is_ok());
 
-    // #[test]
-    // fn test_generate_contract_with_entry_point() -> Result<()> {
-    //     let tmpdir = std::env::temp_dir();
-    //     env::set_current_dir(&tmpdir)?;
+        let dest_file = Path::new("./test/invariants/fuzz/test.txt");
+        assert!(dest_file.exists());
+        assert_eq!(std::fs::read_to_string(dest_file)?, "test content");
 
-    //     let args = Args {
-    //         overwrite: true,
-    //         solc: "0.8.23".to_string(),
-    //         nb_handlers: 2,
-    //         nb_properties: 2,
-    //     };
+        std::fs::remove_dir_all("./test/invariants/fuzz")?;
+        Ok(())
+    }
 
-    //     let result = generate_contract(
-    //         &args,
-    //         ContractType::EntryPoint,
-    //         &ContractType::EntryPoint.name(),
-    //         &tmpdir,
-    //     );
+    #[test]
+    #[serial]
+    fn test_move_temp_contents_no_overwrite() -> Result<()> {
+        let temp_dir = TempDir::new().context("Failed to create temp dir")?;
 
-    //     assert!(result.is_ok());
+        std::fs::create_dir_all("./test/invariants/fuzz")?;
 
-    //     assert_eq!(
-    //         result.unwrap(),
-    //         Contract {
-    //             licence: "MIT".to_string(),
-    //             solc: "0.8.23".to_string(),
-    //             imports: "import {PropertiesParent} from './properties/PropertiesParent.t.sol';"
-    //                 .to_string(),
-    //             name: "FuzzTest".to_string(),
-    //             parents: "PropertiesParent".to_string(),
-    //         }
-    //     );
+        let result = move_temp_contents(&temp_dir, false);
 
-    //     assert!(Path::new("FuzzTest.t.sol").is_file());
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Fuzz test folder already exists, did you mean --overwrite ?"
+        );
 
-    //     Ok(())
-    // }
+        std::fs::remove_dir_all("./test/invariants/fuzz")?;
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_move_temp_contents_new_directory() -> Result<()> {
+        let temp_dir = TempDir::new().context("Failed to create temp dir")?;
+
+        // source directory with test file
+        let source_dir = temp_dir.path().join("source");
+        std::fs::create_dir(&source_dir)?;
+        let test_file = source_dir.join("test.txt");
+        std::fs::write(&test_file, "test content")?;
+
+        // TempDir for source that will be moved
+        let source_temp =
+            TempDir::new_in(&source_dir).context("Failed to create source temp dir")?;
+        std::fs::write(source_temp.path().join("test.txt"), "test content")?;
+
+        // Set current directory to temp_dir
+        let original_dir = std::env::current_dir()?;
+        std::env::set_current_dir(&temp_dir)?;
+
+        // Test moving to non-existent directory
+        let result = move_temp_contents(&source_temp, false);
+        if let Err(ref e) = result {
+            println!("Error: {:#}", e);
+        }
+        assert!(result.is_ok());
+
+        let fuzz_dir = Path::new("./test/invariants/fuzz");
+        assert!(fuzz_dir.exists());
+        assert!(fuzz_dir.is_dir());
+        let dest_file = fuzz_dir.join("test.txt");
+        assert!(dest_file.exists());
+        assert_eq!(std::fs::read_to_string(dest_file)?, "test content");
+
+        std::env::set_current_dir(original_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_generate_test_suite() -> Result<()> {
+        let temp_dir = TempDir::new().context("Failed to create temp dir")?;
+        let original_dir = std::env::current_dir()?;
+        std::env::set_current_dir(&temp_dir)?;
+
+        let args = Args {
+            overwrite: true,
+            solc: "0.8.23".to_string(),
+            nb_handlers: 2,
+            nb_properties: 1,
+        };
+
+        let result = generate_test_suite(&args);
+        assert!(result.is_ok());
+
+        let fuzz_dir = Path::new("test/invariants/fuzz");
+        assert!(fuzz_dir.join("handlers/HandlersA.t.sol").exists());
+        assert!(fuzz_dir.join("handlers/HandlersB.t.sol").exists());
+        assert!(fuzz_dir.join("handlers/HandlersParent.t.sol").exists());
+        assert!(fuzz_dir.join("properties/PropertiesA.t.sol").exists());
+        assert!(fuzz_dir.join("properties/PropertiesParent.t.sol").exists());
+        assert!(fuzz_dir.join("Setup.t.sol").exists());
+        assert!(fuzz_dir.join("FuzzTest.t.sol").exists());
+
+        std::env::set_current_dir(original_dir)?;
+        Ok(())
+    }
 }

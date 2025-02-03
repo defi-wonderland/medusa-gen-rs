@@ -1,0 +1,30 @@
+name: audit check
+
+concurrency:
+    group: ${{github.workflow}}-${{github.ref}}
+    cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+on:
+    push:
+        paths:
+            - '**/Cargo.toml'
+            - '**/Cargo.lock'
+    pull_request:
+            paths:
+                - '**/Cargo.toml'
+                - '**/Cargo.lock'
+
+jobs:
+    audit:
+        timeout-minutes: 10
+        name: 'Rust audit check'
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: Swatinem/rust-cache@v2
+            - uses: rustsec/audit-check@v1.4.1
+              with:
+                token: ${{ secrets.GITHUB_TOKEN }}
